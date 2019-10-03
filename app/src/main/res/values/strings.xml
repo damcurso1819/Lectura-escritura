@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">Aad1920Ejemplo2</string>
+    <string name="interno">Interno</string>
+    <string name="publico">Público</string>
+    <string name="privado">Privado</string>
+    <string name="nombre">Introduce el nombre del archivo:</string>
+    <string name="valor">Introduce  el valor que quieres escribir:</string>
+    <string name="leer">Leer</string>
+    <string name="escribir">Escribir</string>
+    <string name="respNo">No</string>
+    <string name="respSi">Sí</string>
+    <string name="tituloExplicacion">Warning</string>
+    <string name="mensajeExplicacion">Lo necesito</string>
+    <string name="tituloExplicacion2">Lo necesito</string>
+    <string name="mensajeExplicacion2">Lo necesito</string>
+</resources>
