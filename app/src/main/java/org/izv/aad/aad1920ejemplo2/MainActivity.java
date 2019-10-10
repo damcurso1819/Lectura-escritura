@@ -5,21 +5,32 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.preference.PreferenceManager;
 
 import android.Manifest;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Environment;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.RadioGroup;
 import android.widget.TextView;
 
+import org.izv.aad.aad1920ejemplo2.operaciones.AfterPermissionsCheck;
+import org.izv.aad.aad1920ejemplo2.settings.SettingsActivity;
+
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 
@@ -37,8 +48,8 @@ public class MainActivity extends AppCompatActivity {
     private static final int PUBLIC = 1;
     private static final int PRIVATE = 2;
     private static final int ID_PERMISO_LEER_ESCRIBIR = 4;
-    private static final String TAG = MainActivity.class.getName();
-
+    private static final String TAG = "xyzyx" + MainActivity.class.getName();
+    private static final String KEY_ARCHIVO = "archivo";
 
     private Button btLeer, btEscribir; //Botones leer y escribir
     private EditText etNombre, etValor;
@@ -97,7 +108,7 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    private void checkPermissions() {
+    private void checkPermissions(String permiso, int titulo, int mensaje, AfterPermissionsCheck apc) {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
                 != PackageManager.PERMISSION_GRANTED) {
             if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
@@ -108,7 +119,9 @@ public class MainActivity extends AppCompatActivity {
                         ID_PERMISO_LEER_ESCRIBIR);
             }
         } else {
-            writeNotes();
+            apc.doTheJob();
+            //writeNotes();
+            //readNotes();
         }
     }
 
@@ -156,15 +169,13 @@ public class MainActivity extends AppCompatActivity {
         etValor = findViewById(R.id.etValor);
         rgTipo = findViewById(R.id.rgTipo);
         tvResultado = findViewById(R.id.tvResultado);
-
+        etNombre.setText(readPreferences());
     }
 
     private boolean isValues() {
         name = etNombre.getText().toString().trim(); // Devuelve el contenido más informaciñon adicional, trim quita espacios iniciales
         type = MainActivity.getCheckedType(rgTipo.getCheckedRadioButtonId()); // Obtienes el radio button pulsado
-
         //MainActivity. (opcional)
-
         return !(name.isEmpty() || type == NONE); // Devuelve false si está vacío o si es -1
     }
 
@@ -175,6 +186,24 @@ public class MainActivity extends AppCompatActivity {
 
         initComponents();
         assignEvents();
+        readSettings();
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.menu, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.mnSettings:
+                showSettings();
+                return true;
+        }
+        return super.onOptionsItemSelected(item);
     }
 
     @Override
@@ -190,26 +219,91 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    @Override
+    protected void onStop() {
+        super.onStop();
+        Log.v(TAG, "on stop");
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        Log.v(TAG, "on destroy");
+    }
+
     private void readFile() {
         if (isValues()) {
             if (type == PUBLIC) {
-
+                AfterPermissionsCheck apc = new AfterPermissionsCheck() {
+                    @Override
+                    public void doTheJob() {
+                       readNotes();
+                    }
+                };
+                checkPermissions(Manifest.permission.READ_EXTERNAL_STORAGE,
+                        R.string.tituloExplicacion2,
+                        R.string.mensajeExplicacion2,
+                        apc);
             } else {
-
+                readNotes();
             }
         }
     }
 
     private void readNotes() {
+        File f = new File(getFile(type), name);
+        Log.v(TAG, f.getAbsolutePath());
+        try {
+            BufferedReader br = new BufferedReader(new FileReader(f));
+            String linea;
+            StringBuffer lineas = new StringBuffer("");
+            while ((linea = br.readLine()) != null) {
+                lineas.append(linea + "\n");
+            }
+            br.close();
+            tvResultado.setText(lineas);
+            savePreferrences();
+        } catch(IOException e) {
+            tvResultado.setText(e.getMessage());
+        }
+
+    }
+
+    private String readPreferences() {
+        SharedPreferences sharedPref = this.getPreferences(Context.MODE_PRIVATE);
+        return sharedPref.getString(KEY_ARCHIVO, "");
+    }
+
+    private void readSettings() {
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
+        String name = sharedPreferences.getString("apelo", "siempre");
+        Log.v(TAG, name);
+    }
+
+    private void savePreferrences() {
+        SharedPreferences sharedPref = this.getPreferences(Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPref.edit();
+        editor.putString(KEY_ARCHIVO, name);
+        editor.commit();
+    }
+
+    private void showSettings() {
+        Intent intent = new Intent(this, SettingsActivity.class);
+        startActivity(intent);
     }
 
     private void writeFile() {
-
         value = etValor.getText().toString().trim();
-
         if (isValues() && !value.isEmpty()) {
             if (type == PUBLIC) {
-                checkPermissions();
+                checkPermissions(Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                        R.string.tituloExplicacion, R.string.mensajeExplicacion,
+                        new AfterPermissionsCheck() {
+                            @Override
+                            public void doTheJob() {
+                                writeNotes();
+                            }
+                        });
             } else {
                 writeNotes();
             }
@@ -224,6 +318,8 @@ public class MainActivity extends AppCompatActivity {
             fw.write(value);
             fw.flush();
             fw.close();
+            tvResultado.setText(R.string.escribir);
+            savePreferrences();
         } catch (IOException e) {
             tvResultado.setText(e.getMessage());
         }
